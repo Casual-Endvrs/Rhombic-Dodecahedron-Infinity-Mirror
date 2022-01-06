@@ -188,7 +188,7 @@ void setup()
 void loop()
 {
   dueling_unicorns_ani(20);
-  twinkling_ani(0.25, 16);
+  // twinkling_ani(0.25, 16);
 
   gear_ani(9, gHue_ss);
 
@@ -285,7 +285,7 @@ void twinkling_ani(float prob_new_light, u_int8_t fade_rate)
 
   while (true)
   {
-    prob_create_new = random(0, __LONG_MAX__) / (__LONG_MAX__ - 1.0);
+    prob_create_new = random_probability();
     if (prob_create_new < prob_new_light)
     {
       random_led = random(0, TOTAL_NUM_LEDS + 1);
@@ -300,28 +300,29 @@ void dueling_unicorns_ani(int unicorn_len)
 {
   clear_all();
 
-  unicorn uni_1(unicorn_len);
+  // unicorn uni_1(unicorn_len);
   unicorn uni_2(unicorn_len);
-  unicorn uni_3(unicorn_len);
+  // unicorn uni_3(unicorn_len);
 
   while (true)
   {
     // uni_1.update_position();
-    // uni_2.update_position();
-    uni_3.update_position();
+    uni_2.update_position();
+    // uni_3.update_position();
 
     render_frame();
 
-    if (uni_1._pos_leds[0] >= TOTAL_NUM_LEDS)
-    {
-      delay(1000000);
-    }
+    // if (uni_1._pos_leds[0] >= TOTAL_NUM_LEDS)
+    // {
+    //   delay(1000000);
+    // }
   }
 }
 
 void render_frame()
 {
   FastLED.show();
+  // if (limit_fps)
   FastLED.delay(1000 / FRAMES_PER_SECOND);
 }
 
@@ -457,7 +458,7 @@ int end_led_num(int led_id)
 
 //! color functions/classes ?
 
-//! sprite classes
+//! Unicorn class functions
 
 unicorn::unicorn(int num_leds)
 {
@@ -599,13 +600,56 @@ void unicorn::print_positions()
   Serial.print("}\n\n");
 }
 
-//! example functions
+//! General functions
 
 void shift_arr_down(int *arr, int arr_len)
 {
   for (int i = arr_len - 1; i > 0; i--)
   {
     arr[i] = arr[i - 1];
+  }
+}
+
+float random_probability()
+{
+  return random(0, __LONG_MAX__) / (__LONG_MAX__ - 1.0);
+}
+
+//! Momentum operations
+
+bool test_at_node(int led_num, int direction)
+{
+  if ((led_num + (direction + 1) / 2) == 0)
+  {
+    return true;
+  }
+  return false;
+}
+
+bool test_is_4_node(int *indices)
+{
+  if (nodes_leds[indices[0]][3] == NOT_VALID_LED)
+  {
+    return false;
+  }
+  return true;
+}
+
+void go_random_lrs(int *indicies, float prob_go_straight) // go a random direction, left / right / straight
+{
+  float turn_threshold = (1 - prob_go_straight) / 2.;
+  float turn_prob;
+  if (turn_prob < turn_threshold)
+  {
+    turn_left(indicies);
+  }
+  else if (turn_prob >= (1 - turn_threshold))
+  {
+    turn_right(indicies);
+  }
+  else
+  {
+    go_straight(indicies);
   }
 }
 
