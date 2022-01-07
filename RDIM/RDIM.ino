@@ -1,24 +1,8 @@
-#include <WS2812Serial.h>
-#define USE_WS2812SERIAL
-
-#include <FastLED.h>
-// FASTLED_USING_NAMESPACE
+#include "RDIM_parameters.h"
 
 #include <random>
 
-// #define USE_ARDUINO true
-
-#define DATA_PIN 14
-#define LED_TYPE WS2811
-#define COLOR_ORDER GRB
-
-#define NUM_LEDS_PER_EDGE 18
-#define TOTAL_NUM_LEDS 24 * NUM_LEDS_PER_EDGE
-#define LED_END_SHIFT 1.2
-#define NOT_VALID_LED TOTAL_NUM_LEDS + 1
-
-#define BRIGHTNESS 85
-#define FRAMES_PER_SECOND 120
+#include "momentum_sprite.h"
 
 uint8_t gHue = 0; // rotating "base color" used by many of the patterns
 uint8_t gHue_ss = 255 / NUM_LEDS_PER_EDGE;
@@ -133,25 +117,6 @@ void print_nodes_leds()
   Serial.println();
 }
 
-class unicorn
-{
-public:
-  unicorn(int num_leds);
-  void update_position();
-
-  int _pos_leds[2 * NUM_LEDS_PER_EDGE]; // led position of the unicorn
-
-  void print_positions();
-
-private:
-  void create_colors();     // method for creating the array used for the hues/colors of the unicorn
-  void update_led_colors(); // method that updates the colors of the currently occupied leds set by _pos_leds
-  void move();              // method used to advance the unicorns position one place
-  int _num_leds;
-  CRGB _rgb_colors[2 * NUM_LEDS_PER_EDGE];
-  int _dir; // direction the unicorn is travelling
-};
-
 void setup()
 {
   // set the random seed using noise from pin 0
@@ -187,7 +152,7 @@ void setup()
 
 void loop()
 {
-  dueling_unicorns_ani(20);
+  dueling_unicorns_ani(20); // , leds, nodes_leds
   // twinkling_ani(0.25, 16);
 
   gear_ani(9, gHue_ss);
@@ -296,14 +261,17 @@ void twinkling_ani(float prob_new_light, u_int8_t fade_rate)
   }
 }
 
-void dueling_unicorns_ani(int unicorn_len)
+void dueling_unicorns_ani(int unicorn_len) // , CRGB leds, int **nodes_leds
 {
   clear_all();
 
-  // unicorn uni_1(unicorn_len);
-  unicorn uni_2(unicorn_len);
-  // unicorn uni_3(unicorn_len);
+  Serial.println("Building sprites");
 
+  // momentum_sprite uni_1(unicorn_len);
+  momentum_sprite uni_2(unicorn_len, leds, nodes_leds);
+  // momentum_sprite uni_3(unicorn_len);
+
+  Serial.println("Starting animation");
   while (true)
   {
     // uni_1.update_position();
@@ -311,11 +279,6 @@ void dueling_unicorns_ani(int unicorn_len)
     // uni_3.update_position();
 
     render_frame();
-
-    // if (uni_1._pos_leds[0] >= TOTAL_NUM_LEDS)
-    // {
-    //   delay(1000000);
-    // }
   }
 }
 
@@ -334,7 +297,7 @@ void clear_all()
 
 //! End - Animations
 
-int find_node_idx(int led_num, int nodes_leds[14][4])
+int find_node_idx(int led_num)
 {
   for (int node_num = 0; node_num < 14; node_num++)
   { // iterate through nodes
@@ -346,6 +309,7 @@ int find_node_idx(int led_num, int nodes_leds[14][4])
       }
     }
   }
+  return -1;
 }
 
 void calc_led_locs(float led_locs[TOTAL_NUM_LEDS][3], int nodes_leds[14][4], float vertex_coords[14][3])
@@ -359,11 +323,11 @@ void calc_led_locs(float led_locs[TOTAL_NUM_LEDS][3], int nodes_leds[14][4], flo
   { // for each possible starting led id
     // find the node where the start led is
     start_num = start_led * NUM_LEDS_PER_EDGE;
-    start_node_idx = find_node_idx(start_num, nodes_leds);
+    start_node_idx = find_node_idx(start_num);
 
     // find the node where the end led is
     end_led = 1 - 1 * NUM_LEDS_PER_EDGE * (start_led + 1);
-    end_node_idx = find_node_idx(end_led, nodes_leds); // set end node value
+    end_node_idx = find_node_idx(end_led); // set end node value
 
     // calculate values required to determine the location of individual leds
     float start_point[3];
@@ -460,155 +424,7 @@ int end_led_num(int led_id)
 
 //! Unicorn class functions
 
-unicorn::unicorn(int num_leds)
-{
-  if (num_leds > 2 * NUM_LEDS_PER_EDGE)
-  {
-    num_leds = 2 * NUM_LEDS_PER_EDGE;
-  }
-  _num_leds = num_leds;
-  create_colors();
-
-  // create initial head position and direction
-  _pos_leds[0] = random(TOTAL_NUM_LEDS - 1);
-  _dir = 2 * random(2) - 1;
-
-  // move num_leds times to obtain complete unicorn position
-  for (int i = 0; i < num_leds - 1; i++)
-  {
-    move();
-  }
-}
-
-void unicorn::update_position()
-{ // set last led black
-  leds[_pos_leds[_num_leds - 1]] = CRGB::Black;
-
-  // move to the next position
-  move();
-
-  // update new colors
-  update_led_colors();
-}
-
-void unicorn::create_colors()
-{
-  CHSV hsv(0, 255, 255);
-  u_int8_t _hue_delta = 255 / (_num_leds - 1); // hue delta between two neighbouring leds
-
-  for (int i = 0; i < _num_leds; i++)
-  {
-    hsv.hue = hsv.hue + _hue_delta;
-    hsv2rgb_rainbow(hsv, _rgb_colors[i]);
-  }
-}
-
-void unicorn::update_led_colors()
-{
-  for (int i = _num_leds; i >= 0; i--)
-  {
-    leds[_pos_leds[i]] = _rgb_colors[i];
-  }
-}
-
-void unicorn::move()
-{
-  int indices[2];
-  bool at_strip_end = false;
-  int new_head;
-
-  if (_dir == -1) // travelling toward the beginning of the led strip
-  {
-    if ((_pos_leds[0] % NUM_LEDS_PER_EDGE) == 0) // at the start of led strip
-    {
-      at_strip_end = true;
-      find_momentum_node(_pos_leds[0], indices);
-    }
-  }
-  else // travelling toward the end of the led strip
-  {
-    if ((_pos_leds[0] + 1) % NUM_LEDS_PER_EDGE == 0) // at the start of led strip
-    {
-      at_strip_end = true;
-      find_momentum_node(-1 * _pos_leds[0], indices);
-    }
-  }
-
-  if (at_strip_end)
-  {
-    // special action required to turn some direction
-    int turn_dir;
-
-    // if node contains 3 strips - straight is NOT an option
-    if (nodes_leds[indices[0]][3] == NOT_VALID_LED)
-    {
-      turn_dir = random(2);
-    }
-    else // if node contains 4 strips - straight is an option
-    {
-      turn_dir = random(3);
-    }
-
-    // find new head led
-    if (turn_dir == 0) // turn left
-    {
-      turn_left(indices);
-    }
-    else if (turn_dir == 1) // turn right
-    {
-      turn_right(indices);
-    }
-    else // go straight
-    {
-      go_straight(indices);
-    }
-    new_head = nodes_leds[indices[0]][indices[1]];
-  }
-  else
-  {
-    new_head = _pos_leds[0] + _dir;
-  }
-
-  // shift led position numbers down
-  shift_arr_down(_pos_leds, _num_leds);
-
-  // insert new head led num
-  _pos_leds[0] = new_head;
-
-  if (at_strip_end)
-  {
-    if (_pos_leds[0] < 0)
-    {
-      _dir = -1;
-      _pos_leds[0] = -1 * _pos_leds[0];
-    }
-    else
-    {
-      _dir = 1;
-    }
-  }
-}
-
-void unicorn::print_positions()
-{
-  Serial.print("\n\n{");
-  for (int i = 0; i < _num_leds; i++)
-  {
-    Serial.print(_pos_leds[i]);
-    Serial.print(", ");
-  }
-  Serial.print("}\n\n");
-}
-
 //! General functions
-
-void shift_arr_down(int *arr, int arr_len)
-{
-  for (int i = arr_len - 1; i > 0; i--)
-  {
-    arr[i] = arr[i - 1];
-  }
-}
 
 float random_probability()
 {
@@ -616,93 +432,3 @@ float random_probability()
 }
 
 //! Momentum operations
-
-bool test_at_node(int led_num, int direction)
-{
-  if ((led_num + (direction + 1) / 2) == 0)
-  {
-    return true;
-  }
-  return false;
-}
-
-bool test_is_4_node(int *indices)
-{
-  if (nodes_leds[indices[0]][3] == NOT_VALID_LED)
-  {
-    return false;
-  }
-  return true;
-}
-
-void go_random_lrs(int *indicies, float prob_go_straight) // go a random direction, left / right / straight
-{
-  float turn_threshold = (1 - prob_go_straight) / 2.;
-  float turn_prob;
-  if (turn_prob < turn_threshold)
-  {
-    turn_left(indicies);
-  }
-  else if (turn_prob >= (1 - turn_threshold))
-  {
-    turn_right(indicies);
-  }
-  else
-  {
-    go_straight(indicies);
-  }
-}
-
-void find_momentum_node(int led_num, int *indices) // find the index of the momentum node and entry of the given led
-{
-  bool stop = false;
-  for (int node_idx = 0; node_idx < 14; node_idx++)
-  {
-    for (int entry_idx = 0; entry_idx < 4; entry_idx++)
-    {
-      if (nodes_leds[node_idx][entry_idx] == led_num)
-      {
-        indices[0] = node_idx;
-        indices[1] = entry_idx;
-        stop = true;
-      }
-      if (stop)
-      {
-        break;
-      }
-    }
-    if (stop)
-    {
-      break;
-    }
-  }
-}
-
-void turn_right(int *indices)
-{
-  indices[1] = (indices[1] + 3) % 4; // +3 has the same effect as -1
-  if (nodes_leds[indices[0]][indices[1]] == NOT_VALID_LED)
-  {
-    indices[1] = (indices[1] + 3) % 4;
-  }
-}
-
-void turn_left(int *indices)
-{
-  indices[1] = (indices[1] + 1) % 4;
-  if (nodes_leds[indices[0]][indices[1]] == NOT_VALID_LED)
-  {
-    indices[1] = (indices[1] + 1) % 4;
-  }
-}
-
-void go_straight(int *indices)
-{
-  // if straight is not an option, the same value is returned
-  // this acts like a reflection
-  indices[1] = (indices[1] + 2) % 4;
-  if (nodes_leds[indices[0]][indices[1]] == NOT_VALID_LED)
-  {
-    indices[1] = (indices[1] + 2) % 4;
-  }
-}

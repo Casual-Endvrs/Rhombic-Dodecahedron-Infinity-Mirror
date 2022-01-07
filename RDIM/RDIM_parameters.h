@@ -1,0 +1,17 @@
+#include <WS2812Serial.h>
+#define USE_WS2812SERIAL
+
+#include <FastLED.h>
+// FASTLED_USING_NAMESPACE
+
+#define DATA_PIN 14
+#define LED_TYPE WS2811
+#define COLOR_ORDER GRB
+
+#define NUM_LEDS_PER_EDGE 18
+#define TOTAL_NUM_LEDS 24 * NUM_LEDS_PER_EDGE
+#define LED_END_SHIFT 1.2
+#define NOT_VALID_LED TOTAL_NUM_LEDS + 1
+
+#define BRIGHTNESS 85
+#define FRAMES_PER_SECOND 120
