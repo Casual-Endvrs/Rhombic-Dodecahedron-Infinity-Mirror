@@ -265,16 +265,13 @@ void dueling_unicorns_ani(int unicorn_len) // , CRGB leds, int **nodes_leds
 {
   clear_all();
 
-  Serial.println("Building sprites");
-
-  // momentum_sprite uni_1(unicorn_len);
+  momentum_sprite uni_1(unicorn_len, leds, nodes_leds);
   momentum_sprite uni_2(unicorn_len, leds, nodes_leds);
-  // momentum_sprite uni_3(unicorn_len);
+  // momentum_sprite uni_3(unicorn_len, leds, nodes_leds);
 
-  Serial.println("Starting animation");
   while (true)
   {
-    // uni_1.update_position();
+    uni_1.update_position();
     uni_2.update_position();
     // uni_3.update_position();
 

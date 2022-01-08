@@ -12,12 +12,7 @@ momentum_sprite::momentum_sprite(int num_leds, CRGB *leds, int nodes_leds[14][4]
     _num_leds = num_leds;
     create_colors();
 
-    _nodes_leds = nodes_leds;
-    // _nodes_leds = &nodes_leds[0][0];
-    // for (int i = 0; i < 14; i++)
-    // {
-    //     _nodes_leds[i] = &nodes_leds[i][0];
-    // }
+    _nodes_leds = nodes_leds + 1;
     _leds = leds;
 
     // create initial head position and direction
@@ -25,38 +20,32 @@ momentum_sprite::momentum_sprite(int num_leds, CRGB *leds, int nodes_leds[14][4]
     _dir = 2 * random(2) - 1;
 
     // move num_leds times to obtain complete momentum_sprite position
-    // for (int i = 0; i < num_leds - 1; i++)
-    // {
-    //     move();
-    // }
+    for (int i = 0; i < num_leds - 1; i++)
+    {
+        move();
+    }
 }
 
 void momentum_sprite::update_position()
-{ // set last led black
-    Serial.println("Setting the tail to black");
-    _leds[_pos_leds[_num_leds - 1]] = CRGB::Black;
-
-    Serial.println("moving");
+{
     // move to the next position
     move();
 
-    Serial.println("updating colors");
     // update new colors
     update_led_colors();
-
-    Serial.println("Complete");
 }
 
 void momentum_sprite::create_colors()
 {
     CHSV hsv(0, 255, 255);
-    u_int8_t _hue_delta = 255 / (_num_leds - 1); // hue delta between two neighbouring leds
+    u_int8_t _hue_delta = 255 / (_num_leds - 2); // hue delta between two neighbouring leds
 
-    for (int i = 0; i < _num_leds; i++)
+    for (int i = 0; i < _num_leds - 1; i++)
     {
         hsv.hue = hsv.hue + _hue_delta;
         hsv2rgb_rainbow(hsv, _rgb_colors[i]);
     }
+    _rgb_colors[_num_leds - 1] = CRGB::Black;
 }
 
 void momentum_sprite::update_led_colors()
@@ -69,12 +58,10 @@ void momentum_sprite::update_led_colors()
 
 void momentum_sprite::move()
 {
-    Serial.println("Starting move");
     int indices[2] = {0, 0};
     bool at_strip_end = false;
     int new_head;
 
-    Serial.println("Testing if its at the end of a strip");
     if (_dir == -1) // travelling toward the beginning of the led strip
     {
         if ((_pos_leds[0] % NUM_LEDS_PER_EDGE) == 0) // at the start of led strip
@@ -92,7 +79,6 @@ void momentum_sprite::move()
         }
     }
 
-    Serial.println("Potentially turning?");
     if (at_strip_end)
     {
         // special action required to turn some direction
@@ -128,7 +114,6 @@ void momentum_sprite::move()
         new_head = _pos_leds[0] + _dir;
     }
 
-    Serial.println("Shifting");
     // shift led position numbers down
     shift_arr_down(_pos_leds, _num_leds);
 
